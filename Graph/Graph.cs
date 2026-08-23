@@ -1,5 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace DataStructure
 {
@@ -104,7 +106,7 @@ namespace DataStructure
 
             var result = new List<T>();
             var visited = new HashSet<T>();
-            var queue = new CircularQueue<T>();
+            var queue = new Queue<T>();
 
             queue.Enqueue(start);
             visited.Add(start);
@@ -130,7 +132,7 @@ namespace DataStructure
         {
             ValidateVertex(start);
 
-            var queue = new CircularQueue<T>();
+            var queue = new Queue<T>();
             var distances = new Dictionary<T, int>();
 
             foreach (var elem in _adjacency.Keys)
@@ -158,12 +160,158 @@ namespace DataStructure
             return distances;
         }
 
-        public void ValidateVertex(T vertex)
+        void ValidateVertex(T vertex)
         {
             if(!_adjacency.ContainsKey(vertex))
             {
                 throw new ArgumentException($"존재하지 않는 정점입니다: {vertex}");
             }
+        }
+
+        public bool HasPath(T start, T destination)
+        {
+            ValidateVertex(start);
+            ValidateVertex(destination);
+
+            var visited = new HashSet<T>();
+            var queue = new Queue<T>();
+
+            queue.Enqueue(start);
+            visited.Add(start);
+
+            while (queue.Count > 0)
+            {
+                T current = queue.Dequeue();
+
+                if(EqualityComparer<T>.Default.Equals(current, destination))
+                {
+                    return true;
+                }
+
+                foreach (var neighbor in _adjacency[current])
+                {
+                    if(visited.Add(neighbor))
+                    {
+                        queue.Enqueue(neighbor);
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public List<List<T>> FindConnectedComponents()
+        {
+            if (IsDirected)
+            {
+                throw new InvalidOperationException("무방향 그래프가 아닙니다.");
+            }
+
+            var results = new List<List<T>>();
+            var visited = new HashSet<T>();
+
+            foreach(T vertex in _adjacency.Keys)
+            {
+                if(visited.Contains(vertex))
+                {
+                    continue;
+                }
+
+                var queue = new Queue<T>();
+                var result = new List<T>();
+
+                queue.Enqueue(vertex);
+                visited.Add(vertex);
+
+                while(queue.Count > 0)
+                {
+                    T current = queue.Dequeue();
+                    result.Add(current);
+
+                    foreach (T neighbor in _adjacency[current])
+                    {
+                        if(visited.Add(neighbor))
+                        {
+                            queue.Enqueue(neighbor);
+                        }
+                    }
+                }
+
+                results.Add(result);
+            }
+            return results;
+        }
+
+        public List<T>? FindPath(T start, T destination)
+        {
+            ValidateVertex(start);
+            ValidateVertex(destination);
+
+            var result = new List<T>();
+            var record = new Dictionary<T, T>();
+            var queue = new Queue<T>();
+            var visited = new HashSet<T>();
+
+            queue.Enqueue(start);
+            visited.Add(start);
+            
+            if(EqualityComparer<T>.Default.Equals(start, destination))
+            {
+                result.Add(start);
+                return result;
+            }
+
+            while (queue.Count > 0)
+            {
+                T current = queue.Dequeue();
+                
+                if(EqualityComparer<T>.Default.Equals(current, destination))
+                {
+                    break;
+                }
+
+                foreach (T neighbor in _adjacency[current])
+                {
+                    if(visited.Add(neighbor))
+                    {
+                        queue.Enqueue(neighbor);
+                        record[neighbor] = current;
+                    }
+                }
+            }
+
+            if (!visited.Contains(destination))
+            {
+                return null;
+            }
+
+            T back = destination;
+            result.Add(back);
+
+            while (!EqualityComparer<T>.Default.Equals(back, start))
+            {
+                back = record[back];
+                result.Add(back);
+            }
+
+            result.Reverse();
+
+            
+
+            return result;
+        }
+
+        public int GetShortestDistance(T start, T destination)
+        {
+            ValidateVertex(start);
+            ValidateVertex(destination);
+
+            var distances = BFSDistance(start);
+            return distances[destination];
+        }
+        public List<T>? FindShortestPath(T start, T destination)
+        {
+            return FindPath(start, destination);
         }
     }
 }
